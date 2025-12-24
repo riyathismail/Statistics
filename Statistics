@@ -1,0 +1,2552 @@
+# =============================================================================
+# BUSINESS STATISTICS TEACHING APP - R SHINY
+# =============================================================================
+# TWO-PHASE SYSTEM: DISCRETE → CONTINUOUS
+# Version: 2.1 (Quick Wins Enhancement)
+# Developer: Dr. M.I.M. Riyath, South Eastern University of Sri Lanka
+# =============================================================================
+
+library(shiny)
+library(ggplot2)
+library(moments)
+library(dplyr)
+library(plotly)
+library(DT)
+library(shinyWidgets)
+library(scales)
+library(shinyBS)  # For modals
+
+# =============================================================================
+# UI DEFINITION
+# =============================================================================
+
+ui <- fluidPage(
+  
+  # Custom CSS
+  tags$head(
+    tags$style(HTML("
+      /* Main theme colors */
+      :root {
+        --primary-color: #667eea;
+        --secondary-color: #764ba2;
+        --success-color: #28a745;
+        --info-color: #17a2b8;
+        --warning-color: #ffc107;
+        --danger-color: #dc3545;
+      }
+      
+      /* Plot containers */
+      .plot-container {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 20px 0;
+        position: relative;
+      }
+      
+      .large-plot {
+        min-height: 450px;
+      }
+      
+      /* Metric cards */
+      .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        margin: 10px 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      }
+      
+      .metric-value {
+        font-size: 36px;
+        font-weight: bold;
+        margin: 10px 0;
+      }
+      
+      .metric-label {
+        font-size: 13px;
+        opacity: 0.95;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      
+      /* Teaching boxes */
+      .teaching-box {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 4px;
+      }
+      
+      .teaching-box h5 {
+        color: #667eea;
+        margin-top: 0;
+        font-weight: bold;
+      }
+      
+      .teaching-box p {
+        margin: 5px 0;
+        line-height: 1.6;
+      }
+      
+      /* Five-number summary box */
+      .five-number-box {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      }
+      
+      .five-number-box h5 {
+        margin: 0 0 15px 0;
+        color: white;
+        font-weight: bold;
+      }
+      
+      .five-number-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.3);
+      }
+      
+      .five-number-item:last-child {
+        border-bottom: none;
+      }
+      
+      .five-number-label {
+        font-weight: 500;
+        opacity: 0.95;
+      }
+      
+      .five-number-value {
+        font-weight: bold;
+        font-size: 18px;
+      }
+      
+      /* Phase badges */
+      .phase-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-size: 14px;
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      
+      .phase-1 {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+      }
+      
+      .phase-2 {
+        background: linear-gradient(135deg, #fd7e14, #f093fb);
+        color: white;
+      }
+      
+      /* Level badges */
+      .level-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        margin-right: 10px;
+      }
+      
+      .level-0 { background: #28a745; color: white; }
+      .level-1 { background: #17a2b8; color: white; }
+      .level-2 { background: #ffc107; color: black; }
+      .level-3 { background: #fd7e14; color: white; }
+      .level-4 { background: #dc3545; color: white; }
+      
+      /* Quiz feedback */
+      .quiz-correct {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 12px;
+        border-radius: 5px;
+        margin: 10px 0;
+        font-weight: 500;
+      }
+      
+      .quiz-incorrect {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        padding: 12px;
+        border-radius: 5px;
+        margin: 10px 0;
+        font-weight: 500;
+      }
+      
+      /* Tables */
+      .secondary-table {
+        max-height: 350px;
+        overflow-y: auto;
+      }
+      
+      /* Fullscreen button */
+      .fullscreen-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        z-index: 100;
+      }
+      
+      /* Phase navigation */
+      .phase-nav {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+      }
+      
+      .phase-nav h3 {
+        margin: 0;
+        color: white;
+      }
+      
+      .phase-nav p {
+        margin: 10px 0 0 0;
+        opacity: 0.9;
+      }
+      
+      /* Footer styles */
+      .app-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 25px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+        z-index: 1000;
+        font-size: 12px;
+      }
+      
+      .footer-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      
+      .footer-dev {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .footer-contact a {
+        color: white;
+        text-decoration: underline;
+        transition: opacity 0.2s;
+      }
+      
+      .footer-contact a:hover {
+        opacity: 0.8;
+      }
+      
+      /* Mobile footer */
+      @media (max-width: 768px) {
+        .footer-content {
+          flex-direction: column;
+          gap: 8px;
+          text-align: center;
+        }
+        
+        .footer-dev {
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .app-footer {
+          padding: 15px;
+          font-size: 11px;
+        }
+      }
+      
+      /* Add padding to body for footer */
+      body {
+        padding-bottom: 80px;
+      }
+      
+      @media (max-width: 768px) {
+        body {
+          padding-bottom: 120px;
+        }
+      }
+      
+      /* Modal styles */
+      .modal-dialog {
+        max-width: 95vw !important;
+        margin: 1.75rem auto;
+      }
+      
+      .modal-content {
+        height: 90vh;
+      }
+      
+      .modal-body {
+        padding: 20px;
+      }
+      
+      /* Upload area */
+      .upload-area {
+        border: 2px dashed #667eea;
+        border-radius: 10px;
+        padding: 30px;
+        text-align: center;
+        background: #f8f9fa;
+        margin: 15px 0;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      
+      .upload-area:hover {
+        background: #e9ecef;
+        border-color: #764ba2;
+      }
+      
+      .upload-icon {
+        font-size: 48px;
+        color: #667eea;
+        margin-bottom: 10px;
+      }
+      
+      /* Custom nav tabs */
+      .nav-tabs .nav-link {
+        font-weight: 500;
+        color: #667eea;
+      }
+      
+      .nav-tabs .nav-link.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: #667eea;
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        .metric-value {
+          font-size: 24px;
+        }
+        
+        .metric-card {
+          padding: 15px;
+        }
+      }
+    "))
+  ),
+  
+  # App Header
+  div(
+    style = "background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+             padding: 30px; 
+             color: white; 
+             margin-bottom: 30px;
+             box-shadow: 0 4px 6px rgba(0,0,0,0.1);",
+    h1("📊 Business Statistics Learning System", 
+       style = "margin: 0; font-weight: bold;"),
+    h4("From Discrete to Continuous: Master Statistical Analysis Step-by-Step", 
+       style = "margin: 10px 0 0 0; opacity: 0.95; font-weight: normal;")
+  ),
+  
+  # Main Content
+  tabsetPanel(
+    id = "phase_tabs",
+    type = "tabs",
+    
+    # =========================================================================
+    # PHASE 1: DISCRETE DATA MODE
+    # =========================================================================
+    tabPanel(
+      "📘 Phase 1: Discrete Data",
+      value = "phase1",
+      icon = icon("calculator"),
+      
+      br(),
+      
+      div(class = "phase-nav",
+          h3(span(class = "phase-badge phase-1", "PHASE 1"), "Discrete Data Mode (Integers Only)"),
+          p("🎯 Perfect for beginners | Learn fundamentals with whole numbers | Build strong foundation")
+      ),
+      
+      sidebarLayout(
+        # PHASE 1 SIDEBAR
+        sidebarPanel(
+          width = 3,
+          
+          h4("🎛️ Data Controls"),
+          
+          div(class = "teaching-box",
+              p(icon("info-circle"), strong(" Discrete Mode")),
+              p("All values are INTEGERS.", style = "font-size: 0.9em; margin: 0;")
+          ),
+          
+          radioButtons(
+            "p1_source",
+            "Data Source:",
+            choices = c(
+              "🎲 Generate Random" = "generate",
+              "✍️ Manual Entry" = "manual",
+              "📁 Upload CSV" = "upload",
+              "📚 Example Dataset" = "example"
+            ),
+            selected = "generate"
+          ),
+          
+          # Generate controls
+          conditionalPanel(
+            condition = "input.p1_source == 'generate'",
+            sliderInput("p1_n", "Sample Size:", 10, 200, 50, 5),
+            sliderInput("p1_mean", "Target Mean:", 10, 100, 50, 5),
+            sliderInput("p1_sd", "Target Spread:", 5, 30, 10, 2),
+            sliderInput("p1_range", "Data Range:", 0, 150, c(20, 80), 5),
+            numericInput("p1_seed", "Random Seed:", 42, 1, 9999)
+          ),
+          
+          # Manual entry
+          conditionalPanel(
+            condition = "input.p1_source == 'manual'",
+            textAreaInput(
+              "p1_manual",
+              "Enter integers (comma-separated):",
+              value = "25,30,35,40,45,50,55,60,65,70",
+              rows = 6
+            ),
+            helpText("Decimals will be rounded to integers")
+          ),
+          
+          # CSV Upload
+          conditionalPanel(
+            condition = "input.p1_source == 'upload'",
+            div(class = "upload-area",
+                div(class = "upload-icon", icon("file-upload")),
+                fileInput(
+                  "p1_csv_file",
+                  NULL,
+                  accept = c(".csv", ".txt"),
+                  buttonLabel = "Browse...",
+                  placeholder = "No file selected"
+                ),
+                p("Upload CSV file with one column of numbers", 
+                  style = "margin: 10px 0 0 0; font-size: 0.9em; color: #666;")
+            ),
+            helpText("Column name will be ignored. Values will be rounded to integers.")
+          ),
+          
+          # Example datasets
+          conditionalPanel(
+            condition = "input.p1_source == 'example'",
+            selectInput(
+              "p1_example",
+              "Select Example:",
+              choices = c(
+                "Monthly Sales (units)" = "sales",
+                "Customer Ages (years)" = "ages",
+                "Product Ratings (1-10)" = "ratings",
+                "Daily Visitors" = "visitors"
+              )
+            )
+          ),
+          
+          hr(),
+          
+          h5("📊 Visualization"),
+          sliderInput("p1_bins", "Number of Bins:", 3, 20, 7, 1),
+          checkboxInput("p1_show_mean", "Show Mean", TRUE),
+          checkboxInput("p1_show_median", "Show Median", TRUE),
+          
+          hr(),
+          
+          downloadButton("p1_download_data", "Download Data", 
+                         class = "btn-primary btn-block"),
+          downloadButton("p1_download_report", "Download Report", 
+                         class = "btn-secondary btn-block")
+        ),
+        
+        # PHASE 1 MAIN PANEL
+        mainPanel(
+          width = 9,
+          
+          tabsetPanel(
+            id = "p1_tabs",
+            
+            # Level 0: Raw Data
+            tabPanel(
+              "Level 0: Raw Data",
+              icon = icon("list"),
+              br(),
+              h3(span(class = "level-badge level-0", "LEVEL 0"), "Understanding Your Data"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Examine raw data before calculations. This is STEP ONE in any analysis.")
+              ),
+              
+              fluidRow(
+                column(6,
+                       h4("📝 Original Data"),
+                       div(class = "secondary-table", DTOutput("p1_raw_table"))
+                ),
+                column(6,
+                       h4("📊 Sorted Data"),
+                       div(class = "secondary-table", DTOutput("p1_sorted_table"))
+                )
+              ),
+              
+              br(),
+              
+              fluidRow(
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Sample Size"),
+                           div(class = "metric-value", textOutput("p1_n_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Minimum"),
+                           div(class = "metric-value", textOutput("p1_min_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Maximum"),
+                           div(class = "metric-value", textOutput("p1_max_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Range"),
+                           div(class = "metric-value", textOutput("p1_range_stat"))
+                       )
+                )
+              ),
+              
+              br(),
+              
+              # Five-Number Summary for Phase 1
+              fluidRow(
+                column(12,
+                       div(class = "five-number-box",
+                           h5(icon("list-ol"), " Five-Number Summary"),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Minimum"),
+                               div(class = "five-number-value", textOutput("p1_five_min"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Q1 (25th Percentile)"),
+                               div(class = "five-number-value", textOutput("p1_five_q1"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Median (50th Percentile)"),
+                               div(class = "five-number-value", textOutput("p1_five_med"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Q3 (75th Percentile)"),
+                               div(class = "five-number-value", textOutput("p1_five_q3"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Maximum"),
+                               div(class = "five-number-value", textOutput("p1_five_max"))
+                           )
+                       )
+                )
+              ),
+              
+              br(),
+              
+              div(class = "plot-container large-plot",
+                  actionButton("p1_fullscreen_dotplot", "⛶ View Fullscreen", 
+                               class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                  h4("📍 Dot Plot"),
+                  plotlyOutput("p1_dotplot", height = "400px"),
+                  div(class = "teaching-box",
+                      h5("💡 What This Shows"),
+                      p("• Each dot = one value"),
+                      p("• Stacked dots = repeated values"),
+                      p("• See shape and spread instantly")
+                  )
+              ),
+              
+              fluidRow(
+                column(6,
+                       h4("🌿 Stem-and-Leaf Plot"),
+                       verbatimTextOutput("p1_stemleaf"),
+                       div(class = "teaching-box",
+                           p("💡 Shows shape while preserving values")
+                       )
+                ),
+                column(6,
+                       h4("📊 Frequency with Tally Marks"),
+                       div(class = "secondary-table", tableOutput("p1_tally_freq"))
+                )
+              ),
+              
+              hr(),
+              
+              div(class = "teaching-box",
+                  h4("🎯 Check Your Understanding"),
+                  radioButtons(
+                    "p1_quiz0",
+                    "Why sort data before analyzing?",
+                    choices = c(
+                      "To make it look neat" = "a",
+                      "To find min, max, and patterns easily" = "b",
+                      "To calculate mean" = "c"
+                    )
+                  ),
+                  actionButton("p1_check0", "Check Answer", class = "btn-primary"),
+                  br(), br(),
+                  uiOutput("p1_feedback0")
+              )
+            ),
+            
+            # Level 1: Frequencies
+            tabPanel(
+              "Level 1: Frequencies",
+              icon = icon("table"),
+              br(),
+              h3(span(class = "level-badge level-1", "LEVEL 1"), "Frequency Distribution"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Create frequency tables - the foundation of data summarization.")
+              ),
+              
+              fluidRow(
+                column(6,
+                       h4("📊 Frequency Table"),
+                       div(class = "secondary-table", DTOutput("p1_freq_table"))
+                ),
+                column(6,
+                       h4("📈 Cumulative Frequency"),
+                       div(class = "secondary-table", DTOutput("p1_cumfreq_table"))
+                )
+              ),
+              
+              br(),
+              
+              div(class = "plot-container large-plot",
+                  actionButton("p1_fullscreen_freqbar", "⛶ View Fullscreen", 
+                               class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                  h4("📊 Frequency Bar Chart"),
+                  plotlyOutput("p1_freq_bar", height = "450px"),
+                  div(class = "teaching-box",
+                      h5("💡 Bar Chart for Discrete Data"),
+                      p("• One bar per value"),
+                      p("• Height = frequency"),
+                      p("• Perfect for integers")
+                  )
+              ),
+              
+              br(),
+              
+              h4("📊 Grouped Frequency"),
+              div(class = "secondary-table", DTOutput("p1_grouped_freq")),
+              
+              hr(),
+              
+              div(class = "teaching-box",
+                  h4("🎯 Check Your Understanding"),
+                  radioButtons(
+                    "p1_quiz1",
+                    "What does cumulative frequency show?",
+                    choices = c(
+                      "Most common value" = "a",
+                      "How many values at or below each point" = "b",
+                      "Average value" = "c"
+                    )
+                  ),
+                  actionButton("p1_check1", "Check Answer", class = "btn-primary"),
+                  br(), br(),
+                  uiOutput("p1_feedback1")
+              )
+            ),
+            
+            # Level 2: Graphs
+            tabPanel(
+              "Level 2: Graphs",
+              icon = icon("chart-bar"),
+              br(),
+              h3(span(class = "level-badge level-2", "LEVEL 2"), "Visual Patterns"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Learn which chart to use and what it reveals.")
+              ),
+              
+              selectInput(
+                "p1_chart_type",
+                "Choose Chart:",
+                choices = c(
+                  "Histogram (Grouped)" = "histogram",
+                  "Bar Chart (Individual)" = "bar",
+                  "Ogive (Cumulative)" = "ogive"
+                )
+              ),
+              
+              div(class = "plot-container large-plot",
+                  actionButton("p1_fullscreen_chart", "⛶ View Fullscreen", 
+                               class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                  plotlyOutput("p1_main_chart", height = "500px"),
+                  uiOutput("p1_chart_interp")
+              ),
+              
+              hr(),
+              
+              div(class = "teaching-box",
+                  h4("🎯 Check Your Understanding"),
+                  radioButtons(
+                    "p1_quiz2",
+                    "For discrete data with many values, which is best?",
+                    choices = c(
+                      "Pie chart" = "a",
+                      "Histogram (grouped)" = "b",
+                      "Line graph" = "c"
+                    )
+                  ),
+                  actionButton("p1_check2", "Check Answer", class = "btn-primary"),
+                  br(), br(),
+                  uiOutput("p1_feedback2")
+              )
+            ),
+            
+            # Level 3: Central Tendency
+            tabPanel(
+              "Level 3: Center",
+              icon = icon("bullseye"),
+              br(),
+              h3(span(class = "level-badge level-3", "LEVEL 3"), "Central Tendency"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Find the 'typical' value using mean, median, and mode.")
+              ),
+              
+              fluidRow(
+                column(4,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Mean"),
+                           div(class = "metric-value", textOutput("p1_mean_stat"))
+                       )
+                ),
+                column(4,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Median"),
+                           div(class = "metric-value", textOutput("p1_median_stat"))
+                       )
+                ),
+                column(4,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Mode"),
+                           div(class = "metric-value", textOutput("p1_mode_stat"))
+                       )
+                )
+              ),
+              
+              br(),
+              
+              div(class = "plot-container large-plot",
+                  actionButton("p1_fullscreen_central", "⛶ View Fullscreen", 
+                               class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                  h4("📊 Distribution with Central Markers"),
+                  plotlyOutput("p1_central_hist", height = "450px"),
+                  div(class = "teaching-box",
+                      h5("💡 Interpretation"),
+                      uiOutput("p1_central_interp")
+                  )
+              ),
+              
+              br(),
+              
+              h4("📐 When to Use Each Measure"),
+              tableOutput("p1_central_table"),
+              
+              hr(),
+              
+              div(class = "teaching-box",
+                  h4("🎯 Check Your Understanding"),
+                  radioButtons(
+                    "p1_quiz3",
+                    "If extreme outliers exist (like CEO salary), use:",
+                    choices = c(
+                      "Mean - includes all values" = "a",
+                      "Median - not affected by extremes" = "b",
+                      "Mode - most common" = "c"
+                    )
+                  ),
+                  actionButton("p1_check3", "Check Answer", class = "btn-primary"),
+                  br(), br(),
+                  uiOutput("p1_feedback3")
+              )
+            )
+          )
+        )
+      )
+    ),
+    
+    # =========================================================================
+    # PHASE 2: CONTINUOUS DATA MODE
+    # =========================================================================
+    tabPanel(
+      "📗 Phase 2: Continuous Data",
+      value = "phase2",
+      icon = icon("chart-line"),
+      
+      br(),
+      
+      div(class = "phase-nav",
+          h3(span(class = "phase-badge phase-2", "PHASE 2"), "Continuous Data Mode (Decimals Allowed)"),
+          p("🚀 Advanced concepts | Real-world precision | Complete statistical toolkit")
+      ),
+      
+      sidebarLayout(
+        # PHASE 2 SIDEBAR
+        sidebarPanel(
+          width = 3,
+          
+          h4("🎛️ Data Controls"),
+          
+          div(class = "teaching-box",
+              p(icon("info-circle"), strong(" Continuous Mode")),
+              p("Decimal values allowed.", style = "font-size: 0.9em; margin: 0;")
+          ),
+          
+          radioButtons(
+            "p2_source",
+            "Data Source:",
+            choices = c(
+              "🎲 Generate Random" = "generate",
+              "✍️ Manual Entry" = "manual",
+              "📁 Upload CSV" = "upload",
+              "📚 Example Dataset" = "example"
+            ),
+            selected = "generate"
+          ),
+          
+          # Generate controls
+          conditionalPanel(
+            condition = "input.p2_source == 'generate'",
+            sliderInput("p2_n", "Sample Size:", 20, 500, 100, 10),
+            numericInput("p2_mean", "Target Mean:", 50, 0, 200, 5),
+            numericInput("p2_sd", "Target SD:", 10, 0.1, 50, 1),
+            sliderInput("p2_skew", "Skewness:", -2, 2, 0, 0.1),
+            numericInput("p2_seed", "Random Seed:", 123, 1, 9999),
+            
+            div(class = "teaching-box",
+                p(icon("lightbulb"), " Control distribution shape!", 
+                  style = "margin: 0; font-size: 0.85em;")
+            )
+          ),
+          
+          # Manual entry
+          conditionalPanel(
+            condition = "input.p2_source == 'manual'",
+            textAreaInput(
+              "p2_manual",
+              "Enter values (comma-separated):",
+              value = "45.5,52.3,48.7,61.2,55.8,49.1,62.4",
+              rows = 6
+            ),
+            helpText("Decimals are allowed and preserved")
+          ),
+          
+          # CSV Upload
+          conditionalPanel(
+            condition = "input.p2_source == 'upload'",
+            div(class = "upload-area",
+                div(class = "upload-icon", icon("file-upload")),
+                fileInput(
+                  "p2_csv_file",
+                  NULL,
+                  accept = c(".csv", ".txt"),
+                  buttonLabel = "Browse...",
+                  placeholder = "No file selected"
+                ),
+                p("Upload CSV file with one column of numbers", 
+                  style = "margin: 10px 0 0 0; font-size: 0.9em; color: #666;")
+            ),
+            helpText("Column name will be ignored. Decimal values preserved.")
+          ),
+          
+          # Example datasets
+          conditionalPanel(
+            condition = "input.p2_source == 'example'",
+            selectInput(
+              "p2_example",
+              "Select Example:",
+              choices = c(
+                "Stock Returns (%)" = "stock",
+                "Customer Satisfaction (1-10)" = "satisfaction",
+                "Product Weights (kg)" = "weights",
+                "Response Times (sec)" = "times"
+              )
+            )
+          ),
+          
+          hr(),
+          
+          h5("📊 Visualization"),
+          sliderInput("p2_bins", "Number of Bins:", 5, 30, 15, 1),
+          checkboxInput("p2_show_mean", "Show Mean", TRUE),
+          checkboxInput("p2_show_median", "Show Median", TRUE),
+          checkboxInput("p2_show_normal", "Normal Overlay", TRUE),
+          checkboxInput("p2_show_quartiles", "Show Quartiles", FALSE),
+          checkboxInput("p2_show_outliers", "Highlight Outliers", TRUE),
+          
+          hr(),
+          
+          downloadButton("p2_download_data", "Download Data", 
+                         class = "btn-primary btn-block"),
+          downloadButton("p2_download_report", "Download Report", 
+                         class = "btn-secondary btn-block")
+        ),
+        
+        # PHASE 2 MAIN PANEL
+        mainPanel(
+          width = 9,
+          
+          tabsetPanel(
+            id = "p2_tabs",
+            
+            # Level 0: Raw Data
+            tabPanel(
+              "Level 0: Raw Data",
+              icon = icon("database"),
+              br(),
+              h3(span(class = "level-badge level-0", "LEVEL 0"), "Continuous Data Exploration"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Work with precise decimal values - common in real business data.")
+              ),
+              
+              fluidRow(
+                column(6,
+                       h4("📝 Original Data"),
+                       div(class = "secondary-table", DTOutput("p2_raw_table"))
+                ),
+                column(6,
+                       h4("📊 Sorted Data"),
+                       div(class = "secondary-table", DTOutput("p2_sorted_table"))
+                )
+              ),
+              
+              br(),
+              
+              fluidRow(
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Sample Size"),
+                           div(class = "metric-value", textOutput("p2_n_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Minimum"),
+                           div(class = "metric-value", textOutput("p2_min_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Maximum"),
+                           div(class = "metric-value", textOutput("p2_max_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Range"),
+                           div(class = "metric-value", textOutput("p2_range_stat"))
+                       )
+                )
+              ),
+              
+              br(),
+              
+              # Five-Number Summary for Phase 2
+              fluidRow(
+                column(12,
+                       div(class = "five-number-box",
+                           h5(icon("list-ol"), " Five-Number Summary"),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Minimum"),
+                               div(class = "five-number-value", textOutput("p2_five_min"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Q1 (25th Percentile)"),
+                               div(class = "five-number-value", textOutput("p2_five_q1"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Median (50th Percentile)"),
+                               div(class = "five-number-value", textOutput("p2_five_med"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Q3 (75th Percentile)"),
+                               div(class = "five-number-value", textOutput("p2_five_q3"))
+                           ),
+                           div(class = "five-number-item",
+                               div(class = "five-number-label", "Maximum"),
+                               div(class = "five-number-value", textOutput("p2_five_max"))
+                           )
+                       )
+                )
+              ),
+              
+              br(),
+              
+              div(class = "plot-container large-plot",
+                  actionButton("p2_fullscreen_density", "⛶ View Fullscreen", 
+                               class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                  h4("📊 Density Distribution"),
+                  plotlyOutput("p2_density", height = "400px"),
+                  div(class = "teaching-box",
+                      h5("💡 Continuous Data Visualization"),
+                      p("• Smooth curve shows probability density"),
+                      p("• Better than dot plot for decimals"),
+                      p("• Area under curve = probability")
+                  )
+              ),
+              
+              br(),
+              
+              # Outlier Detection
+              fluidRow(
+                column(6,
+                       h4("📊 Quick Statistics"),
+                       tableOutput("p2_quick_stats")
+                ),
+                column(6,
+                       h4("⚠️ Outlier Detection"),
+                       uiOutput("p2_outlier_info")
+                )
+              )
+            ),
+            
+            # Level 1: Distribution
+            tabPanel(
+              "Level 1: Distribution",
+              icon = icon("chart-area"),
+              br(),
+              h3(span(class = "level-badge level-1", "LEVEL 1"), "Understanding Distribution"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("See how continuous data spreads across values.")
+              ),
+              
+              div(class = "plot-container large-plot",
+                  actionButton("p2_fullscreen_histogram", "⛶ View Fullscreen", 
+                               class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                  h4("📊 Histogram with Density"),
+                  plotlyOutput("p2_histogram", height = "500px"),
+                  div(class = "teaching-box",
+                      h5("💡 Histogram for Continuous Data"),
+                      p("• Groups data into ranges (bins)"),
+                      p("• Shows distribution shape"),
+                      p("• Change bin count to see different patterns")
+                  )
+              ),
+              
+              br(),
+              
+              fluidRow(
+                column(6,
+                       h4("📈 Cumulative Distribution (Ogive)"),
+                       plotlyOutput("p2_ogive", height = "350px")
+                ),
+                column(6,
+                       h4("📊 Frequency Table"),
+                       div(class = "secondary-table", DTOutput("p2_freq_table"))
+                )
+              )
+            ),
+            
+            # Level 2: Central Tendency
+            tabPanel(
+              "Level 2: Center",
+              icon = icon("bullseye"),
+              br(),
+              h3(span(class = "level-badge level-2", "LEVEL 2"), "Central Tendency (Continuous)"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Calculate precise measures of center with decimals.")
+              ),
+              
+              fluidRow(
+                column(4,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Mean"),
+                           div(class = "metric-value", textOutput("p2_mean_stat"))
+                       )
+                ),
+                column(4,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Median"),
+                           div(class = "metric-value", textOutput("p2_median_stat"))
+                       )
+                ),
+                column(4,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Mode Class"),
+                           div(class = "metric-value", textOutput("p2_mode_stat"))
+                       )
+                )
+              ),
+              
+              br(),
+              
+              div(class = "plot-container large-plot",
+                  actionButton("p2_fullscreen_central", "⛶ View Fullscreen", 
+                               class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                  h4("📊 Distribution with Measures"),
+                  plotlyOutput("p2_central_hist", height = "450px"),
+                  div(class = "teaching-box",
+                      h5("💡 Interpretation"),
+                      uiOutput("p2_central_interp")
+                  )
+              )
+            ),
+            
+            # Level 3: Dispersion
+            tabPanel(
+              "Level 3: Dispersion",
+              icon = icon("expand-arrows-alt"),
+              br(),
+              h3(span(class = "level-badge level-3", "LEVEL 3"), "Measuring Spread"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Understand how much data varies around the center.")
+              ),
+              
+              fluidRow(
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Variance"),
+                           div(class = "metric-value", textOutput("p2_var_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Std Dev"),
+                           div(class = "metric-value", textOutput("p2_sd_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "CV (%)"),
+                           div(class = "metric-value", textOutput("p2_cv_stat"))
+                       )
+                ),
+                column(3,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "IQR"),
+                           div(class = "metric-value", textOutput("p2_iqr_stat"))
+                       )
+                )
+              ),
+              
+              br(),
+              
+              fluidRow(
+                column(6,
+                       div(class = "plot-container",
+                           actionButton("p2_fullscreen_boxplot", "⛶ View Fullscreen", 
+                                        class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                           h4("📦 Box Plot"),
+                           plotlyOutput("p2_boxplot", height = "400px")
+                       )
+                ),
+                column(6,
+                       div(class = "plot-container",
+                           h4("📊 Spread Visualization"),
+                           plotlyOutput("p2_spread_hist", height = "400px")
+                       )
+                )
+              ),
+              
+              br(),
+              
+              div(class = "teaching-box",
+                  h5("💡 Dispersion Interpretation"),
+                  uiOutput("p2_dispersion_interp")
+              ),
+              
+              br(),
+              
+              h4("📐 Quartiles & Percentiles"),
+              fluidRow(
+                column(6, tableOutput("p2_quartile_table")),
+                column(6, tableOutput("p2_percentile_table"))
+              )
+            ),
+            
+            # Level 4: Shape & Normality
+            tabPanel(
+              "Level 4: Shape",
+              icon = icon("wave-square"),
+              br(),
+              h3(span(class = "level-badge level-4", "LEVEL 4"), "Distribution Shape"),
+              
+              div(class = "teaching-box",
+                  h5(icon("graduation-cap"), " Learning Objective"),
+                  p("Analyze skewness, kurtosis, and test for normality.")
+              ),
+              
+              fluidRow(
+                column(6,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Skewness"),
+                           div(class = "metric-value", textOutput("p2_skew_stat")),
+                           div(uiOutput("p2_skew_interp"), style = "margin-top: 10px;")
+                       )
+                ),
+                column(6,
+                       div(class = "metric-card",
+                           div(class = "metric-label", "Kurtosis (Excess)"),
+                           div(class = "metric-value", textOutput("p2_kurt_stat")),
+                           div(uiOutput("p2_kurt_interp"), style = "margin-top: 10px;")
+                       )
+                )
+              ),
+              
+              br(),
+              
+              fluidRow(
+                column(6,
+                       div(class = "plot-container",
+                           actionButton("p2_fullscreen_shape", "⛶ View Fullscreen", 
+                                        class = "btn btn-sm btn-outline-primary fullscreen-btn"),
+                           h4("📊 Distribution vs Normal"),
+                           plotlyOutput("p2_shape_hist", height = "400px")
+                       )
+                ),
+                column(6,
+                       div(class = "plot-container",
+                           h4("📈 Q-Q Plot"),
+                           plotOutput("p2_qq_plot", height = "400px")
+                       )
+                )
+              ),
+              
+              br(),
+              
+              h4("🔬 Normality Tests"),
+              tableOutput("p2_normality_tests"),
+              div(class = "teaching-box",
+                  p("💡 p-value < 0.05 suggests data is NOT normally distributed"),
+                  p("💡 p-value ≥ 0.05 suggests data MAY be normally distributed")
+              ),
+              
+              br(),
+              
+              h4("📚 Shape Interpretation Guide"),
+              fluidRow(
+                column(4,
+                       div(class = "teaching-box",
+                           h5("📈 Right-Skewed"),
+                           p("• Long tail right"),
+                           p("• Mean > Median"),
+                           p("• Example: Income")
+                       )
+                ),
+                column(4,
+                       div(class = "teaching-box",
+                           h5("📊 Symmetric"),
+                           p("• Balanced"),
+                           p("• Mean ≈ Median"),
+                           p("• Example: Heights")
+                       )
+                ),
+                column(4,
+                       div(class = "teaching-box",
+                           h5("📉 Left-Skewed"),
+                           p("• Long tail left"),
+                           p("• Mean < Median"),
+                           p("• Example: Age at retirement")
+                       )
+                )
+              )
+            )
+          )
+        )
+      )
+    ),
+    
+    # =========================================================================
+    # COMPLETE REFERENCE GUIDE
+    # =========================================================================
+    tabPanel(
+      "📚 Complete Guide",
+      value = "guide",
+      icon = icon("book"),
+      
+      br(),
+      
+      div(
+        style = "background: linear-gradient(135deg, #667eea, #764ba2); 
+                 padding: 30px; color: white; border-radius: 10px; margin-bottom: 30px;",
+        h2("📖 Complete Business Statistics Reference", style = "margin: 0;"),
+        p("Your comprehensive guide to all statistical concepts", style = "margin: 10px 0 0 0;")
+      ),
+      
+      fluidRow(
+        column(6,
+               div(class = "teaching-box",
+                   h3("📘 Phase 1: Discrete Data"),
+                   h5("Key Concepts:"),
+                   p("• Whole numbers only (integers)"),
+                   p("• Tally marks and stem-and-leaf"),
+                   p("• Bar charts for individual values"),
+                   p("• Foundation building"),
+                   br(),
+                   h5("When to Use:"),
+                   p("• Count data (customers, products sold)"),
+                   p("• Ratings on discrete scales"),
+                   p("• Age in years (if rounded)"),
+                   p("• Learning fundamentals")
+               )
+        ),
+        column(6,
+               div(class = "teaching-box",
+                   h3("📗 Phase 2: Continuous Data"),
+                   h5("Key Concepts:"),
+                   p("• Decimal precision"),
+                   p("• Density curves and histograms"),
+                   p("• Normal distribution concepts"),
+                   p("• Advanced shape analysis"),
+                   br(),
+                   h5("When to Use:"),
+                   p("• Measurements (height, weight, time)"),
+                   p("• Financial data (prices, returns)"),
+                   p("• Real-world business metrics"),
+                   p("• Statistical inference")
+               )
+        )
+      ),
+      
+      br(),
+      
+      h3("📐 Statistical Measures Quick Reference"),
+      
+      fluidRow(
+        column(6,
+               h4("Central Tendency"),
+               tags$table(class = "table table-striped",
+                          tags$thead(
+                            tags$tr(
+                              tags$th("Measure"),
+                              tags$th("Formula"),
+                              tags$th("Use When")
+                            )
+                          ),
+                          tags$tbody(
+                            tags$tr(
+                              tags$td("Mean"),
+                              tags$td("μ = Σx / n"),
+                              tags$td("Symmetric, no outliers")
+                            ),
+                            tags$tr(
+                              tags$td("Median"),
+                              tags$td("Middle value"),
+                              tags$td("Skewed or outliers present")
+                            ),
+                            tags$tr(
+                              tags$td("Mode"),
+                              tags$td("Most frequent"),
+                              tags$td("Categorical or discrete")
+                            )
+                          )
+               )
+        ),
+        column(6,
+               h4("Dispersion"),
+               tags$table(class = "table table-striped",
+                          tags$thead(
+                            tags$tr(
+                              tags$th("Measure"),
+                              tags$th("Formula"),
+                              tags$th("Use When")
+                            )
+                          ),
+                          tags$tbody(
+                            tags$tr(
+                              tags$td("Range"),
+                              tags$td("Max - Min"),
+                              tags$td("Quick spread check")
+                            ),
+                            tags$tr(
+                              tags$td("Std Dev"),
+                              tags$td("σ = √(Σ(x-μ)²/n)"),
+                              tags$td("Normal distribution")
+                            ),
+                            tags$tr(
+                              tags$td("IQR"),
+                              tags$td("Q3 - Q1"),
+                              tags$td("Robust to outliers")
+                            ),
+                            tags$tr(
+                              tags$td("CV"),
+                              tags$td("(σ/μ) × 100"),
+                              tags$td("Compare different scales")
+                            )
+                          )
+               )
+        )
+      ),
+      
+      br(),
+      
+      h3("💼 Business Applications"),
+      
+      fluidRow(
+        column(6,
+               div(class = "teaching-box",
+                   h4("📊 Sales Analysis"),
+                   p("• Median for skewed sales data"),
+                   p("• CV to compare product variability"),
+                   p("• Percentiles for performance ranking"),
+                   p("• Histogram to identify trends")
+               ),
+               br(),
+               div(class = "teaching-box",
+                   h4("🏭 Quality Control"),
+                   p("• Mean ± 3SD for control limits"),
+                   p("• Box plot to detect outliers"),
+                   p("• Histogram for process stability"),
+                   p("• IQR for variation monitoring")
+               )
+        ),
+        column(6,
+               div(class = "teaching-box",
+                   h4("👥 HR & Compensation"),
+                   p("• Median salary (avoid CEO effect)"),
+                   p("• Quartiles for pay grade ranges"),
+                   p("• CV to assess pay equity"),
+                   p("• Percentiles for benchmarking")
+               ),
+               br(),
+               div(class = "teaching-box",
+                   h4("💰 Finance & Risk"),
+                   p("• SD measures investment risk"),
+                   p("• Skewness shows return asymmetry"),
+                   p("• Kurtosis indicates tail risk"),
+                   p("• Normal tests for assumptions")
+               )
+        )
+      ),
+      
+      br(),
+      
+      h3("🎓 Learning Path Recommendations"),
+      
+      div(class = "teaching-box",
+          h4("For Beginners:"),
+          p("1. Start with Phase 1 (Discrete Data)"),
+          p("2. Master Levels 0-3 before moving on"),
+          p("3. Practice with example datasets"),
+          p("4. Complete all quizzes successfully"),
+          p("5. Then progress to Phase 2"),
+          br(),
+          h4("For Advanced Students:"),
+          p("1. Review Phase 1 quickly"),
+          p("2. Focus on Phase 2 concepts"),
+          p("3. Experiment with skewness control"),
+          p("4. Understand normality testing"),
+          p("5. Apply to real business problems")
+      ),
+      
+      br(),
+      
+      h3("📝 Common Mistakes to Avoid"),
+      
+      div(class = "teaching-box",
+          p("❌ Using mean for highly skewed data"),
+          p("❌ Comparing SD across different scales (use CV)"),
+          p("❌ Ignoring outliers without investigation"),
+          p("❌ Assuming normality without testing"),
+          p("❌ Using too few or too many histogram bins"),
+          p("❌ Confusing discrete and continuous data types")
+      )
+    )
+  ),
+  
+  # =========================================================================
+  # PERSISTENT FOOTER WITH YOUR CREDIT
+  # =========================================================================
+  tags$footer(
+    class = "app-footer",
+    div(
+      class = "footer-content",
+      
+      # Developer info
+      div(
+        class = "footer-dev",
+        div(
+          icon("user-graduate"),
+          strong(" Developed by: Dr. M.I.M. Riyath")
+        ),
+        div(
+          "|Department of Accountancy and Finance | Faculty of Management and Commerce|"
+        ),
+        div(
+          "|South Eastern University of Sri Lanka|"
+        )
+      ),
+      
+      # Contact
+      div(
+        class = "footer-contact",
+        icon("envelope"),
+        " ",
+        tags$a(
+          href = "mailto:riyath@seu.ac.lk",
+          "riyath@seu.ac.lk",
+          target = "_blank"
+        )
+      )
+    )
+  )
+)
+
+# =============================================================================
+# SERVER LOGIC
+# =============================================================================
+
+server <- function(input, output, session) {
+  
+  # ===========================================================================
+  # EXAMPLE DATASETS
+  # ===========================================================================
+  
+  # Phase 1: Discrete examples
+  examples_p1 <- list(
+    sales = c(45, 52, 48, 61, 55, 49, 62, 58, 51, 47, 53, 59, 46, 54, 60, 50, 56, 63, 48, 52),
+    ages = c(22, 25, 28, 30, 32, 35, 38, 40, 42, 45, 48, 50, 52, 55, 58, 42, 38, 35, 40, 45),
+    ratings = c(7, 8, 6, 9, 7, 8, 7, 9, 8, 7, 8, 9, 7, 8, 8, 9, 7, 8, 6, 9),
+    visitors = c(120, 135, 128, 142, 138, 145, 132, 148, 140, 136, 143, 139, 130, 144, 137)
+  )
+  
+  # Phase 2: Continuous examples
+  examples_p2 <- list(
+    stock = c(2.34, -1.52, 3.21, 0.87, -0.53, 4.12, 1.23, -2.11, 2.85, 0.34, 3.56, -1.21, 1.82, 2.54, -0.76),
+    satisfaction = c(7.2, 8.1, 6.5, 7.8, 8.5, 7.1, 6.9, 8.2, 7.5, 6.8, 7.9, 8.3, 7.4, 6.7, 8.0),
+    weights = c(5.43, 5.67, 5.21, 5.89, 5.34, 5.76, 5.12, 5.98, 5.45, 5.67, 5.23, 5.81, 5.39),
+    times = c(2.3, 1.8, 3.2, 2.1, 1.9, 2.7, 3.5, 2.4, 1.7, 2.9, 2.2, 3.1, 2.6, 1.8, 2.5)
+  )
+  
+  # ===========================================================================
+  # PHASE 1: DATA REACTIVE
+  # ===========================================================================
+  
+  p1_data <- reactive({
+    data <- if (input$p1_source == "generate") {
+      set.seed(input$p1_seed)
+      raw <- rnorm(input$p1_n, input$p1_mean, input$p1_sd)
+      integers <- round(raw)
+      integers <- pmax(integers, input$p1_range[1])
+      integers <- pmin(integers, input$p1_range[2])
+      integers
+      
+    } else if (input$p1_source == "manual") {
+      raw <- as.numeric(unlist(strsplit(input$p1_manual, ",")))
+      round(raw[!is.na(raw)])
+      
+    } else if (input$p1_source == "upload") {
+      req(input$p1_csv_file)
+      tryCatch({
+        df <- read.csv(input$p1_csv_file$datapath, header = TRUE)
+        raw <- as.numeric(df[, 1])
+        round(raw[!is.na(raw)])
+      }, error = function(e) {
+        c(50, 55, 60, 65, 70)
+      })
+      
+    } else {
+      examples_p1[[input$p1_example]]
+    }
+    
+    if (length(data) == 0) return(c(50, 55, 60, 65, 70))
+    as.integer(data)
+  })
+  
+  # Phase 1 statistics
+  p1_stats <- reactive({
+    data <- p1_data()
+    get_mode <- function(v) {
+      freq <- table(v)
+      if (max(freq) == 1) return(NA)
+      as.numeric(names(freq)[which.max(freq)])
+    }
+    
+    list(
+      n = length(data),
+      min = min(data),
+      max = max(data),
+      range = max(data) - min(data),
+      mean = mean(data),
+      median = median(data),
+      mode = get_mode(data),
+      q1 = quantile(data, 0.25),
+      q2 = quantile(data, 0.50),
+      q3 = quantile(data, 0.75),
+      iqr = IQR(data)
+    )
+  })
+  
+  # ===========================================================================
+  # PHASE 1 OUTPUTS
+  # ===========================================================================
+  
+  output$p1_raw_table <- renderDT({
+    datatable(
+      data.frame(Index = 1:length(p1_data()), Value = p1_data()),
+      options = list(pageLength = 10, dom = 'tp'),
+      rownames = FALSE
+    )
+  })
+  
+  output$p1_sorted_table <- renderDT({
+    datatable(
+      data.frame(Rank = 1:length(p1_data()), Value = sort(p1_data())),
+      options = list(pageLength = 10, dom = 'tp'),
+      rownames = FALSE
+    )
+  })
+  
+  output$p1_n_stat <- renderText(as.character(p1_stats()$n))
+  output$p1_min_stat <- renderText(as.character(p1_stats()$min))
+  output$p1_max_stat <- renderText(as.character(p1_stats()$max))
+  output$p1_range_stat <- renderText(as.character(p1_stats()$range))
+  
+  # Five-number summary
+  output$p1_five_min <- renderText(as.character(p1_stats()$min))
+  output$p1_five_q1 <- renderText(sprintf("%.1f", p1_stats()$q1))
+  output$p1_five_med <- renderText(sprintf("%.1f", p1_stats()$median))
+  output$p1_five_q3 <- renderText(sprintf("%.1f", p1_stats()$q3))
+  output$p1_five_max <- renderText(as.character(p1_stats()$max))
+  
+  output$p1_dotplot <- renderPlotly({
+    df <- data.frame(value = p1_data())
+    p <- ggplot(df, aes(x = value)) +
+      geom_dotplot(binwidth = 1, fill = "#667eea", color = "#764ba2", dotsize = 0.8) +
+      scale_y_continuous(NULL, breaks = NULL) +
+      labs(x = "Value", y = "") +
+      theme_minimal(base_size = 13)
+    ggplotly(p) %>% layout(hovermode = 'x unified')
+  })
+  
+  output$p1_stemleaf <- renderText({
+    data <- p1_data()
+    stems <- floor(data / 10)
+    leaves <- data %% 10
+    result <- ""
+    for (s in sort(unique(stems))) {
+      leaf_vals <- sort(leaves[stems == s])
+      result <- paste0(result, sprintf("%2d | %s\n", s, paste(leaf_vals, collapse = " ")))
+    }
+    result
+  })
+  
+  # Tally marks with frequency
+  output$p1_tally_freq <- renderTable({
+    freq <- as.data.frame(table(p1_data()))
+    names(freq) <- c("Value", "Frequency")
+    
+    # Create tally marks
+    freq$Tally <- sapply(freq$Frequency, function(n) {
+      full_groups <- floor(n / 5)
+      remainder <- n %% 5
+      
+      tally <- paste(rep("||||", full_groups), collapse = " ")
+      if (remainder > 0) {
+        tally <- paste(tally, paste(rep("|", remainder), collapse = ""))
+      }
+      trimws(tally)
+    })
+    
+    freq[, c("Value", "Tally", "Frequency")]
+  })
+  
+  # Fullscreen modals for Phase 1
+  observeEvent(input$p1_fullscreen_dotplot, {
+    showModal(modalDialog(
+      title = "Dot Plot - Fullscreen View",
+      plotlyOutput("p1_dotplot_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p1_dotplot_modal <- renderPlotly({
+    df <- data.frame(value = p1_data())
+    p <- ggplot(df, aes(x = value)) +
+      geom_dotplot(binwidth = 1, fill = "#667eea", color = "#764ba2", dotsize = 0.8) +
+      scale_y_continuous(NULL, breaks = NULL) +
+      labs(x = "Value", y = "") +
+      theme_minimal(base_size = 16)
+    ggplotly(p) %>% layout(hovermode = 'x unified')
+  })
+  
+  observeEvent(input$p1_fullscreen_freqbar, {
+    showModal(modalDialog(
+      title = "Frequency Bar Chart - Fullscreen View",
+      plotlyOutput("p1_freqbar_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p1_freqbar_modal <- renderPlotly({
+    freq <- as.data.frame(table(p1_data()))
+    names(freq) <- c("Value", "Frequency")
+    plot_ly(freq, x = ~Value, y = ~Frequency, type = 'bar',
+            marker = list(color = '#667eea', line = list(color = '#764ba2', width = 1.5))) %>%
+      layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  observeEvent(input$p1_fullscreen_chart, {
+    showModal(modalDialog(
+      title = paste(input$p1_chart_type, "- Fullscreen View"),
+      plotlyOutput("p1_chart_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p1_chart_modal <- renderPlotly({
+    data <- p1_data()
+    
+    if (input$p1_chart_type == "histogram") {
+      plot_ly(x = data, type = "histogram", nbinsx = input$p1_bins,
+              marker = list(color = 'rgba(102, 126, 234, 0.7)', 
+                            line = list(color = '#764ba2', width = 1.5))) %>%
+        layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+    } else if (input$p1_chart_type == "bar") {
+      freq <- as.data.frame(table(data))
+      names(freq) <- c("Value", "Frequency")
+      plot_ly(freq, x = ~Value, y = ~Frequency, type = 'bar',
+              marker = list(color = '#667eea', line = list(color = '#764ba2', width = 1.5))) %>%
+        layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+    } else {
+      sorted <- sort(data)
+      cum_pct <- (1:length(sorted)) / length(sorted) * 100
+      plot_ly(x = sorted, y = cum_pct, type = 'scatter', mode = 'lines',
+              line = list(color = '#667eea', width = 3)) %>%
+        layout(xaxis = list(title = "Value"), yaxis = list(title = "Cumulative %"))
+    }
+  })
+  
+  observeEvent(input$p1_fullscreen_central, {
+    showModal(modalDialog(
+      title = "Central Tendency - Fullscreen View",
+      plotlyOutput("p1_central_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p1_central_modal <- renderPlotly({
+    data <- p1_data()
+    stats <- p1_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p1_bins,
+                 name = "Frequency", marker = list(color = 'rgba(102, 126, 234, 0.6)'))
+    
+    if (input$p1_show_mean) {
+      p <- p %>% add_segments(x = stats$mean, xend = stats$mean, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "red", width = 3, dash = "dash"),
+                              name = paste("Mean:", round(stats$mean, 1)))
+    }
+    
+    if (input$p1_show_median) {
+      p <- p %>% add_segments(x = stats$median, xend = stats$median, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "green", width = 3, dash = "dash"),
+                              name = paste("Median:", round(stats$median, 1)))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  # Quiz 0
+  observeEvent(input$p1_check0, {
+    output$p1_feedback0 <- renderUI({
+      if (input$p1_quiz0 == "b") {
+        div(class = "quiz-correct", icon("check-circle"), " Correct! Sorting reveals min, max, and patterns.")
+      } else {
+        div(class = "quiz-incorrect", icon("times-circle"), " Try again.")
+      }
+    })
+  })
+  
+  # Level 1 outputs
+  output$p1_freq_table <- renderDT({
+    freq <- as.data.frame(table(p1_data()))
+    names(freq) <- c("Value", "Frequency")
+    datatable(freq, options = list(pageLength = 15, dom = 'tp'), rownames = FALSE)
+  })
+  
+  output$p1_cumfreq_table <- renderDT({
+    freq <- as.data.frame(table(p1_data()))
+    names(freq) <- c("Value", "Frequency")
+    freq$Cumulative <- cumsum(freq$Frequency)
+    freq$Percentage <- round((freq$Cumulative / sum(freq$Frequency)) * 100, 1)
+    datatable(freq, options = list(pageLength = 15, dom = 'tp'), rownames = FALSE)
+  })
+  
+  output$p1_freq_bar <- renderPlotly({
+    freq <- as.data.frame(table(p1_data()))
+    names(freq) <- c("Value", "Frequency")
+    plot_ly(freq, x = ~Value, y = ~Frequency, type = 'bar',
+            marker = list(color = '#667eea', line = list(color = '#764ba2', width = 1.5))) %>%
+      layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  output$p1_grouped_freq <- renderDT({
+    data <- p1_data()
+    breaks <- seq(min(data), max(data), length.out = input$p1_bins + 1)
+    groups <- cut(data, breaks = breaks, include.lowest = TRUE, right = FALSE)
+    freq <- as.data.frame(table(groups))
+    names(freq) <- c("Class", "Frequency")
+    datatable(freq, options = list(pageLength = 15, dom = 'tp'), rownames = FALSE)
+  })
+  
+  # Quiz 1
+  observeEvent(input$p1_check1, {
+    output$p1_feedback1 <- renderUI({
+      if (input$p1_quiz1 == "b") {
+        div(class = "quiz-correct", icon("check-circle"), " Correct! Cumulative shows running total.")
+      } else {
+        div(class = "quiz-incorrect", icon("times-circle"), " Incorrect. Try again.")
+      }
+    })
+  })
+  
+  # Level 2 outputs
+  output$p1_main_chart <- renderPlotly({
+    data <- p1_data()
+    
+    if (input$p1_chart_type == "histogram") {
+      plot_ly(x = data, type = "histogram", nbinsx = input$p1_bins,
+              marker = list(color = 'rgba(102, 126, 234, 0.7)', 
+                            line = list(color = '#764ba2', width = 1.5))) %>%
+        layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+    } else if (input$p1_chart_type == "bar") {
+      freq <- as.data.frame(table(data))
+      names(freq) <- c("Value", "Frequency")
+      plot_ly(freq, x = ~Value, y = ~Frequency, type = 'bar',
+              marker = list(color = '#667eea', line = list(color = '#764ba2', width = 1.5))) %>%
+        layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+    } else {
+      sorted <- sort(data)
+      cum_pct <- (1:length(sorted)) / length(sorted) * 100
+      plot_ly(x = sorted, y = cum_pct, type = 'scatter', mode = 'lines',
+              line = list(color = '#667eea', width = 3)) %>%
+        layout(xaxis = list(title = "Value"), yaxis = list(title = "Cumulative %"))
+    }
+  })
+  
+  output$p1_chart_interp <- renderUI({
+    div(class = "teaching-box",
+        h5("💡 Chart Interpretation"),
+        p(switch(input$p1_chart_type,
+                 "histogram" = "Groups data into bins. Shows overall shape.",
+                 "bar" = "One bar per value. Good for discrete data.",
+                 "ogive" = "Cumulative curve. Find percentiles easily."
+        ))
+    )
+  })
+  
+  # Quiz 2
+  observeEvent(input$p1_check2, {
+    output$p1_feedback2 <- renderUI({
+      if (input$p1_quiz2 == "b") {
+        div(class = "quiz-correct", icon("check-circle"), " Correct! Histogram groups many values.")
+      } else {
+        div(class = "quiz-incorrect", icon("times-circle"), " Try again.")
+      }
+    })
+  })
+  
+  # Level 3 outputs
+  output$p1_mean_stat <- renderText(sprintf("%.1f", p1_stats()$mean))
+  output$p1_median_stat <- renderText(sprintf("%.1f", p1_stats()$median))
+  output$p1_mode_stat <- renderText({
+    mode_val <- p1_stats()$mode
+    if (is.na(mode_val)) "None" else as.character(mode_val)
+  })
+  
+  output$p1_central_hist <- renderPlotly({
+    data <- p1_data()
+    stats <- p1_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p1_bins,
+                 name = "Frequency", marker = list(color = 'rgba(102, 126, 234, 0.6)'))
+    
+    if (input$p1_show_mean) {
+      p <- p %>% add_segments(x = stats$mean, xend = stats$mean, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "red", width = 3, dash = "dash"),
+                              name = paste("Mean:", round(stats$mean, 1)))
+    }
+    
+    if (input$p1_show_median) {
+      p <- p %>% add_segments(x = stats$median, xend = stats$median, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "green", width = 3, dash = "dash"),
+                              name = paste("Median:", round(stats$median, 1)))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  output$p1_central_interp <- renderUI({
+    stats <- p1_stats()
+    diff <- stats$mean - stats$median
+    
+    if (abs(diff) < 1) {
+      p("Mean ≈ Median → Symmetric distribution")
+    } else if (diff > 1) {
+      p("Mean > Median → Right-skewed (high values pull mean up)")
+    } else {
+      p("Mean < Median → Left-skewed (low values pull mean down)")
+    }
+  })
+  
+  output$p1_central_table <- renderTable({
+    data.frame(
+      Measure = c("Mean", "Median", "Mode"),
+      `Use When` = c("Symmetric, no outliers", "Skewed or outliers", "Finding most common"),
+      check.names = FALSE
+    )
+  })
+  
+  # Quiz 3
+  observeEvent(input$p1_check3, {
+    output$p1_feedback3 <- renderUI({
+      if (input$p1_quiz3 == "b") {
+        div(class = "quiz-correct", icon("check-circle"), " Correct! Median resists outliers.")
+      } else {
+        div(class = "quiz-incorrect", icon("times-circle"), " Try again.")
+      }
+    })
+  })
+  
+  # Download handlers Phase 1
+  output$p1_download_data <- downloadHandler(
+    filename = function() paste0("discrete_data_", Sys.Date(), ".csv"),
+    content = function(file) {
+      write.csv(data.frame(Value = p1_data()), file, row.names = FALSE)
+    }
+  )
+  
+  output$p1_download_report <- downloadHandler(
+    filename = function() paste0("discrete_report_", Sys.Date(), ".csv"),
+    content = function(file) {
+      stats <- p1_stats()
+      report <- data.frame(
+        Statistic = c("Sample Size", "Min", "Max", "Range", "Mean", "Median", "Mode", "Q1", "Q3", "IQR"),
+        Value = c(stats$n, stats$min, stats$max, stats$range, stats$mean, stats$median, 
+                  ifelse(is.na(stats$mode), NA, stats$mode), stats$q1, stats$q3, stats$iqr)
+      )
+      write.csv(report, file, row.names = FALSE)
+    }
+  )
+  
+  # ===========================================================================
+  # PHASE 2: DATA REACTIVE
+  # ===========================================================================
+  
+  p2_data <- reactive({
+    data <- if (input$p2_source == "generate") {
+      set.seed(input$p2_seed)
+      
+      if (abs(input$p2_skew) < 0.1) {
+        rnorm(input$p2_n, input$p2_mean, input$p2_sd)
+      } else {
+        if (input$p2_skew > 0) {
+          raw <- rexp(input$p2_n, 1/input$p2_sd)
+          raw + input$p2_mean - mean(raw)
+        } else {
+          raw <- -rexp(input$p2_n, 1/input$p2_sd)
+          raw + input$p2_mean - mean(raw)
+        }
+      }
+      
+    } else if (input$p2_source == "manual") {
+      raw <- as.numeric(unlist(strsplit(input$p2_manual, ",")))
+      raw[!is.na(raw)]
+      
+    } else if (input$p2_source == "upload") {
+      req(input$p2_csv_file)
+      tryCatch({
+        df <- read.csv(input$p2_csv_file$datapath, header = TRUE)
+        as.numeric(df[, 1])
+      }, error = function(e) {
+        c(50.5, 55.3, 60.1, 65.7, 70.2)
+      })
+      
+    } else {
+      examples_p2[[input$p2_example]]
+    }
+    
+    if (length(data) == 0) return(c(50.5, 55.3, 60.1, 65.7, 70.2))
+    data[!is.na(data)]
+  })
+  
+  # Phase 2 statistics with outlier detection
+  p2_stats <- reactive({
+    data <- p2_data()
+    
+    # Outlier detection using IQR method
+    q1 <- quantile(data, 0.25)
+    q3 <- quantile(data, 0.75)
+    iqr_val <- q3 - q1
+    lower_fence <- q1 - 1.5 * iqr_val
+    upper_fence <- q3 + 1.5 * iqr_val
+    outliers <- data[data < lower_fence | data > upper_fence]
+    
+    list(
+      n = length(data),
+      min = min(data),
+      max = max(data),
+      range = max(data) - min(data),
+      mean = mean(data),
+      median = median(data),
+      variance = var(data),
+      sd = sd(data),
+      cv = (sd(data) / mean(data)) * 100,
+      q1 = q1,
+      q2 = quantile(data, 0.50),
+      q3 = q3,
+      iqr = iqr_val,
+      skewness = skewness(data),
+      kurtosis = kurtosis(data) - 3,
+      lower_fence = lower_fence,
+      upper_fence = upper_fence,
+      outliers = outliers,
+      n_outliers = length(outliers)
+    )
+  })
+  
+  # ===========================================================================
+  # PHASE 2 OUTPUTS
+  # ===========================================================================
+  
+  output$p2_raw_table <- renderDT({
+    datatable(
+      data.frame(Index = 1:length(p2_data()), Value = round(p2_data(), 3)),
+      options = list(pageLength = 10, dom = 'tp'),
+      rownames = FALSE
+    )
+  })
+  
+  output$p2_sorted_table <- renderDT({
+    datatable(
+      data.frame(Rank = 1:length(p2_data()), Value = round(sort(p2_data()), 3)),
+      options = list(pageLength = 10, dom = 'tp'),
+      rownames = FALSE
+    )
+  })
+  
+  output$p2_n_stat <- renderText(as.character(p2_stats()$n))
+  output$p2_min_stat <- renderText(sprintf("%.2f", p2_stats()$min))
+  output$p2_max_stat <- renderText(sprintf("%.2f", p2_stats()$max))
+  output$p2_range_stat <- renderText(sprintf("%.2f", p2_stats()$range))
+  
+  # Five-number summary
+  output$p2_five_min <- renderText(sprintf("%.2f", p2_stats()$min))
+  output$p2_five_q1 <- renderText(sprintf("%.2f", p2_stats()$q1))
+  output$p2_five_med <- renderText(sprintf("%.2f", p2_stats()$median))
+  output$p2_five_q3 <- renderText(sprintf("%.2f", p2_stats()$q3))
+  output$p2_five_max <- renderText(sprintf("%.2f", p2_stats()$max))
+  
+  output$p2_density <- renderPlotly({
+    data <- p2_data()
+    density_est <- density(data)
+    plot_ly(x = density_est$x, y = density_est$y, type = 'scatter', mode = 'lines',
+            fill = 'tozeroy', fillcolor = 'rgba(102, 126, 234, 0.3)',
+            line = list(color = '#667eea', width = 3)) %>%
+      layout(xaxis = list(title = "Value"), yaxis = list(title = "Density"))
+  })
+  
+  output$p2_quick_stats <- renderTable({
+    stats <- p2_stats()
+    data.frame(
+      Statistic = c("Sample Size", "Mean", "Median", "Std Dev"),
+      Value = c(stats$n, sprintf("%.2f", stats$mean), sprintf("%.2f", stats$median), 
+                sprintf("%.2f", stats$sd))
+    )
+  })
+  
+  # Outlier detection display
+  output$p2_outlier_info <- renderUI({
+    stats <- p2_stats()
+    
+    if (stats$n_outliers == 0) {
+      div(class = "teaching-box",
+          h5(icon("check-circle"), " No Outliers Detected"),
+          p("Using IQR method (1.5 × IQR rule)"),
+          p(sprintf("Lower fence: %.2f", stats$lower_fence)),
+          p(sprintf("Upper fence: %.2f", stats$upper_fence))
+      )
+    } else {
+      div(class = "teaching-box",
+          h5(icon("exclamation-triangle"), sprintf(" %d Outlier(s) Detected", stats$n_outliers)),
+          p(sprintf("Values: %s", paste(round(stats$outliers, 2), collapse = ", "))),
+          p(sprintf("Lower fence: %.2f", stats$lower_fence)),
+          p(sprintf("Upper fence: %.2f", stats$upper_fence)),
+          p("These values fall outside 1.5 × IQR from the quartiles")
+      )
+    }
+  })
+  
+  # Fullscreen modals for Phase 2
+  observeEvent(input$p2_fullscreen_density, {
+    showModal(modalDialog(
+      title = "Density Distribution - Fullscreen View",
+      plotlyOutput("p2_density_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p2_density_modal <- renderPlotly({
+    data <- p2_data()
+    density_est <- density(data)
+    plot_ly(x = density_est$x, y = density_est$y, type = 'scatter', mode = 'lines',
+            fill = 'tozeroy', fillcolor = 'rgba(102, 126, 234, 0.3)',
+            line = list(color = '#667eea', width = 3)) %>%
+      layout(xaxis = list(title = "Value"), yaxis = list(title = "Density"))
+  })
+  
+  observeEvent(input$p2_fullscreen_histogram, {
+    showModal(modalDialog(
+      title = "Histogram - Fullscreen View",
+      plotlyOutput("p2_histogram_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p2_histogram_modal <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p2_bins,
+                 marker = list(color = 'rgba(102, 126, 234, 0.6)',
+                               line = list(color = '#764ba2', width = 1)))
+    
+    if (input$p2_show_normal) {
+      x_range <- seq(min(data), max(data), length.out = 200)
+      normal_curve <- dnorm(x_range, stats$mean, stats$sd)
+      bin_width <- (max(data) - min(data)) / input$p2_bins
+      normal_scaled <- normal_curve * length(data) * bin_width
+      
+      p <- p %>% add_trace(x = x_range, y = normal_scaled, type = 'scatter', mode = 'lines',
+                           name = 'Normal Curve', line = list(color = 'orange', width = 3))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  observeEvent(input$p2_fullscreen_central, {
+    showModal(modalDialog(
+      title = "Central Tendency - Fullscreen View",
+      plotlyOutput("p2_central_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p2_central_modal <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p2_bins,
+                 marker = list(color = 'rgba(102, 126, 234, 0.6)'))
+    
+    if (input$p2_show_mean) {
+      p <- p %>% add_segments(x = stats$mean, xend = stats$mean, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "red", width = 3, dash = "dash"),
+                              name = paste("Mean:", round(stats$mean, 2)))
+    }
+    
+    if (input$p2_show_median) {
+      p <- p %>% add_segments(x = stats$median, xend = stats$median, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "green", width = 3, dash = "dash"),
+                              name = paste("Median:", round(stats$median, 2)))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  observeEvent(input$p2_fullscreen_boxplot, {
+    showModal(modalDialog(
+      title = "Box Plot - Fullscreen View",
+      plotlyOutput("p2_boxplot_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p2_boxplot_modal <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(y = data, type = "box", name = "Distribution",
+                 marker = list(color = '#764ba2'), line = list(color = '#667eea'))
+    
+    # Highlight outliers if option is checked
+    if (input$p2_show_outliers && stats$n_outliers > 0) {
+      p <- p %>%
+        add_trace(
+          y = stats$outliers,
+          type = 'scatter',
+          mode = 'markers',
+          marker = list(color = 'red', size = 10, symbol = 'x'),
+          name = 'Outliers',
+          showlegend = TRUE
+        )
+    }
+    
+    p %>% layout(yaxis = list(title = "Value"))
+  })
+  
+  observeEvent(input$p2_fullscreen_shape, {
+    showModal(modalDialog(
+      title = "Distribution Shape - Fullscreen View",
+      plotlyOutput("p2_shape_modal", height = "70vh"),
+      size = "l",
+      easyClose = TRUE,
+      footer = modalButton("Close")
+    ))
+  })
+  
+  output$p2_shape_modal <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p2_bins,
+                 name = "Data", marker = list(color = 'rgba(102, 126, 234, 0.6)'))
+    
+    if (input$p2_show_normal) {
+      x_range <- seq(min(data), max(data), length.out = 200)
+      normal_curve <- dnorm(x_range, stats$mean, stats$sd)
+      bin_width <- (max(data) - min(data)) / input$p2_bins
+      normal_scaled <- normal_curve * length(data) * bin_width
+      
+      p <- p %>% add_trace(x = x_range, y = normal_scaled, type = 'scatter', mode = 'lines',
+                           name = 'Normal Curve', line = list(color = 'orange', width = 3))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  # Level 1 outputs
+  output$p2_histogram <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p2_bins,
+                 marker = list(color = 'rgba(102, 126, 234, 0.6)',
+                               line = list(color = '#764ba2', width = 1)))
+    
+    if (input$p2_show_normal) {
+      x_range <- seq(min(data), max(data), length.out = 200)
+      normal_curve <- dnorm(x_range, stats$mean, stats$sd)
+      bin_width <- (max(data) - min(data)) / input$p2_bins
+      normal_scaled <- normal_curve * length(data) * bin_width
+      
+      p <- p %>% add_trace(x = x_range, y = normal_scaled, type = 'scatter', mode = 'lines',
+                           name = 'Normal Curve', line = list(color = 'orange', width = 3))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  output$p2_ogive <- renderPlotly({
+    data <- sort(p2_data())
+    cum_pct <- (1:length(data)) / length(data) * 100
+    plot_ly(x = data, y = cum_pct, type = 'scatter', mode = 'lines',
+            line = list(color = '#667eea', width = 3)) %>%
+      layout(xaxis = list(title = "Value"), yaxis = list(title = "Cumulative %"))
+  })
+  
+  output$p2_freq_table <- renderDT({
+    data <- p2_data()
+    breaks <- seq(min(data), max(data), length.out = input$p2_bins + 1)
+    groups <- cut(data, breaks = breaks, include.lowest = TRUE)
+    freq <- as.data.frame(table(groups))
+    names(freq) <- c("Class", "Frequency")
+    datatable(freq, options = list(pageLength = 15, dom = 'tp'), rownames = FALSE)
+  })
+  
+  # Level 2 outputs
+  output$p2_mean_stat <- renderText(sprintf("%.2f", p2_stats()$mean))
+  output$p2_median_stat <- renderText(sprintf("%.2f", p2_stats()$median))
+  output$p2_mode_stat <- renderText("Histogram")
+  
+  output$p2_central_hist <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p2_bins,
+                 marker = list(color = 'rgba(102, 126, 234, 0.6)'))
+    
+    if (input$p2_show_mean) {
+      p <- p %>% add_segments(x = stats$mean, xend = stats$mean, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "red", width = 3, dash = "dash"),
+                              name = paste("Mean:", round(stats$mean, 2)))
+    }
+    
+    if (input$p2_show_median) {
+      p <- p %>% add_segments(x = stats$median, xend = stats$median, y = 0, yend = 1, yref = "paper",
+                              line = list(color = "green", width = 3, dash = "dash"),
+                              name = paste("Median:", round(stats$median, 2)))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  output$p2_central_interp <- renderUI({
+    stats <- p2_stats()
+    diff <- stats$mean - stats$median
+    
+    if (abs(diff) < 0.5) {
+      p("Mean ≈ Median → Approximately symmetric")
+    } else if (diff > 0.5) {
+      p("Mean > Median → Right-skewed distribution")
+    } else {
+      p("Mean < Median → Left-skewed distribution")
+    }
+  })
+  
+  # Level 3 outputs
+  output$p2_var_stat <- renderText(sprintf("%.2f", p2_stats()$variance))
+  output$p2_sd_stat <- renderText(sprintf("%.2f", p2_stats()$sd))
+  output$p2_cv_stat <- renderText(sprintf("%.1f%%", p2_stats()$cv))
+  output$p2_iqr_stat <- renderText(sprintf("%.2f", p2_stats()$iqr))
+  
+  output$p2_boxplot <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(y = data, type = "box", name = "Distribution",
+                 marker = list(color = '#764ba2'), line = list(color = '#667eea'))
+    
+    # Highlight outliers if option is checked
+    if (input$p2_show_outliers && stats$n_outliers > 0) {
+      p <- p %>%
+        add_trace(
+          y = stats$outliers,
+          type = 'scatter',
+          mode = 'markers',
+          marker = list(color = 'red', size = 10, symbol = 'x'),
+          name = 'Outliers',
+          showlegend = TRUE
+        )
+    }
+    
+    p %>% layout(yaxis = list(title = "Value"))
+  })
+  
+  output$p2_spread_hist <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p2_bins,
+                 marker = list(color = 'rgba(102, 126, 234, 0.6)'))
+    
+    if (input$p2_show_quartiles) {
+      p <- p %>%
+        add_segments(x = stats$q1, xend = stats$q1, y = 0, yend = 1, yref = "paper",
+                     line = list(color = "orange", width = 2, dash = "dash"),
+                     name = paste("Q1:", round(stats$q1, 2))) %>%
+        add_segments(x = stats$q3, xend = stats$q3, y = 0, yend = 1, yref = "paper",
+                     line = list(color = "orange", width = 2, dash = "dash"),
+                     name = paste("Q3:", round(stats$q3, 2)))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  output$p2_dispersion_interp <- renderUI({
+    stats <- p2_stats()
+    cv <- stats$cv
+    
+    cv_text <- if (cv < 15) {
+      "Low variability - data is consistent"
+    } else if (cv < 30) {
+      "Moderate variability - acceptable variation"
+    } else {
+      "High variability - data is quite dispersed"
+    }
+    
+    div(
+      p(strong("Coefficient of Variation: "), sprintf("%.1f%%", cv)),
+      p(cv_text),
+      p(sprintf("About 68%% of data falls within %.2f to %.2f (Mean ± 1 SD)", 
+                stats$mean - stats$sd, stats$mean + stats$sd)),
+      br(),
+      if (stats$n_outliers > 0) {
+        p(strong(sprintf("⚠️ %d outlier(s) detected", stats$n_outliers)), 
+          style = "color: #dc3545;")
+      }
+    )
+  })
+  
+  output$p2_quartile_table <- renderTable({
+    stats <- p2_stats()
+    data.frame(
+      Quartile = c("Q1 (25%)", "Q2 (Median)", "Q3 (75%)", "IQR"),
+      Value = c(sprintf("%.2f", stats$q1), sprintf("%.2f", stats$q2),
+                sprintf("%.2f", stats$q3), sprintf("%.2f", stats$iqr))
+    )
+  })
+  
+  output$p2_percentile_table <- renderTable({
+    data <- p2_data()
+    data.frame(
+      Percentile = c("10th", "25th", "50th", "75th", "90th", "95th"),
+      Value = sprintf("%.2f", quantile(data, c(0.10, 0.25, 0.50, 0.75, 0.90, 0.95)))
+    )
+  })
+  
+  # Level 4 outputs
+  output$p2_skew_stat <- renderText(sprintf("%.3f", p2_stats()$skewness))
+  output$p2_kurt_stat <- renderText(sprintf("%.3f", p2_stats()$kurtosis))
+  
+  output$p2_skew_interp <- renderUI({
+    skew <- p2_stats()$skewness
+    text <- if (abs(skew) < 0.5) {
+      "Approximately Symmetric"
+    } else if (skew > 0.5) {
+      "Right-Skewed"
+    } else {
+      "Left-Skewed"
+    }
+    span(text, style = "font-size: 14px; opacity: 0.9;")
+  })
+  
+  output$p2_kurt_interp <- renderUI({
+    kurt <- p2_stats()$kurtosis
+    text <- if (abs(kurt) < 0.5) {
+      "Mesokurtic (Normal-like)"
+    } else if (kurt > 0.5) {
+      "Leptokurtic (Heavy tails)"
+    } else {
+      "Platykurtic (Light tails)"
+    }
+    span(text, style = "font-size: 14px; opacity: 0.9;")
+  })
+  
+  output$p2_shape_hist <- renderPlotly({
+    data <- p2_data()
+    stats <- p2_stats()
+    
+    p <- plot_ly(x = data, type = "histogram", nbinsx = input$p2_bins,
+                 name = "Data", marker = list(color = 'rgba(102, 126, 234, 0.6)'))
+    
+    if (input$p2_show_normal) {
+      x_range <- seq(min(data), max(data), length.out = 200)
+      normal_curve <- dnorm(x_range, stats$mean, stats$sd)
+      bin_width <- (max(data) - min(data)) / input$p2_bins
+      normal_scaled <- normal_curve * length(data) * bin_width
+      
+      p <- p %>% add_trace(x = x_range, y = normal_scaled, type = 'scatter', mode = 'lines',
+                           name = 'Normal Curve', line = list(color = 'orange', width = 3))
+    }
+    
+    p %>% layout(xaxis = list(title = "Value"), yaxis = list(title = "Frequency"))
+  })
+  
+  output$p2_qq_plot <- renderPlot({
+    qqnorm(p2_data(), main = "Q-Q Plot", col = "#667eea", pch = 19)
+    qqline(p2_data(), col = "red", lwd = 2, lty = 2)
+  })
+  
+  output$p2_normality_tests <- renderTable({
+    data <- p2_data()
+    
+    # Shapiro-Wilk
+    if (length(data) >= 3 && length(data) <= 5000) {
+      shapiro <- shapiro.test(data)
+      shapiro_p <- shapiro$p.value
+      shapiro_stat <- shapiro$statistic
+    } else {
+      shapiro_p <- NA
+      shapiro_stat <- NA
+    }
+    
+    # Kolmogorov-Smirnov
+    ks <- ks.test(data, "pnorm", mean = mean(data), sd = sd(data))
+    
+    data.frame(
+      Test = c("Shapiro-Wilk", "Kolmogorov-Smirnov"),
+      Statistic = c(
+        ifelse(is.na(shapiro_stat), "N/A", sprintf("%.4f", shapiro_stat)),
+        sprintf("%.4f", ks$statistic)
+      ),
+      `p-value` = c(
+        ifelse(is.na(shapiro_p), "N/A", sprintf("%.4f", shapiro_p)),
+        sprintf("%.4f", ks$p.value)
+      ),
+      Conclusion = c(
+        ifelse(is.na(shapiro_p), "N/A", ifelse(shapiro_p > 0.05, "Normal", "Not Normal")),
+        ifelse(ks$p.value > 0.05, "Normal", "Not Normal")
+      ),
+      check.names = FALSE
+    )
+  })
+  
+  # Download handlers Phase 2
+  output$p2_download_data <- downloadHandler(
+    filename = function() paste0("continuous_data_", Sys.Date(), ".csv"),
+    content = function(file) {
+      write.csv(data.frame(Value = p2_data()), file, row.names = FALSE)
+    }
+  )
+  
+  output$p2_download_report <- downloadHandler(
+    filename = function() paste0("continuous_report_", Sys.Date(), ".csv"),
+    content = function(file) {
+      stats <- p2_stats()
+      report <- data.frame(
+        Statistic = c("Sample Size", "Mean", "Median", "SD", "Variance", "CV", "IQR", 
+                      "Skewness", "Kurtosis", "Min", "Max", "Q1", "Q3", "Outliers"),
+        Value = c(stats$n, stats$mean, stats$median, stats$sd, stats$variance, 
+                  stats$cv, stats$iqr, stats$skewness, stats$kurtosis,
+                  stats$min, stats$max, stats$q1, stats$q3, stats$n_outliers)
+      )
+      write.csv(report, file, row.names = FALSE)
+    }
+  )
+}
+
+# =============================================================================
+# RUN APPLICATION
+# =============================================================================
+
+shinyApp(ui = ui, server = server)
