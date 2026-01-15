@@ -1,2 +1,1 @@
-# Statistics
-Teach Statistics
+https://riyathmim.shinyapps.io/stat/
